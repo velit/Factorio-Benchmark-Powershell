@@ -5,10 +5,12 @@
 * Aggregation of benchmark data into an output CSV file
 * Disabling of mods for the duration of the benchmark (can use mods while benchmarking with -enableMods)
 * Cpu Priority selection (Cmdline flag -cpuPriority, defaults to "High")
-* Various command line options and flags for customizing functionality
-* Default values can be changed by editing the script, in the params section
 * Regex pattern can be used to pick which saves are benchmarked (-pattern "some pattern")
 * By default script loads all savefiles in the given folder.
+
+Various other command line options and flags for customizing functionality
+
+Default values can be changed by editing the script, in the params section
 
 ## Installation
 
