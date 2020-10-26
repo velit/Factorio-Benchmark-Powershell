@@ -40,3 +40,7 @@ Giving ticks and runs and selecting the savefile:
 Also check out the help for all flags, or read the params section of the script
 
     help benchmark.ps1
+
+## Contributors
+
+Thanks to KnightElite from the Technical Factorio Discord for the base script!

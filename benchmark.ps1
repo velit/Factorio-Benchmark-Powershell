@@ -1,3 +1,4 @@
+# Factorio Benchmark Script v1.0.0
 param (
 
     ##################
