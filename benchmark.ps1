@@ -115,7 +115,7 @@ try {
   # Check if output file already exists
   if (-not (Test-Path $output)) {
     # Create folders for output file
-    New-Item -Force (Split-Path -Path $output) -ItemType Directory
+    [Void](New-Item -Force (Split-Path -Path $output) -ItemType Directory)
 
     # Create output and print headers
     echo "save_name,run,startup_time_s,end_time_s,avg_ms,min_ms,max_ms,ticks,execution_time_ms,effective_UPS,version,platform" > $output
