@@ -33,6 +33,10 @@ param (
     # Logging string that is used in the output CSV file
     [string]$platform = "WindowsSteam",
 
+    # Logging string that signifies some shared property between all the
+    # benchmarked save files
+    [string]$calibration = "Not given",
+
 
 
     #####################
@@ -43,7 +47,7 @@ param (
     [string]$outputName = "results.csv",
 
     # Which folder to output results into.
-    [string]$outputFolder = ".\data\",
+    [string]$outputFolder = ".\Results\",
 
     # If given, will use $pattern as a prefix to the output file
     [switch]$usePatternAsOutputPrefix = $true,
@@ -80,15 +84,19 @@ $ErrorActionPreference = "Stop"
 echo ""
 if ($pattern -ne "") {
   [array]$saves = dir $savepath -file -recurse | where {$_.BaseName -Match $pattern}
-  echo "Following saves matched pattern '$pattern':"
+  $saveFoundMessage = "found matching pattern '$pattern'"
 }
 else {
   [array]$saves = dir $savepath -file -recurse
-  echo "All saves in '$savepath':"
+  $saveFoundMessage = "found in '$savepath'"
 }
 
-if ($saves.length -eq 0) {
-  echo "No saves were found that matched pattern '$pattern'"
+if ($saves.length -ne 0) {
+  echo "Following saves ${saveFoundMessage}:"
+}
+else {
+  echo "No saves $saveFoundMessage."
+  echo ""
   exit
 }
 
@@ -118,7 +126,7 @@ try {
     [Void](New-Item -Force (Split-Path -Path $output) -ItemType Directory)
 
     # Create output and print headers
-    echo "save_name,run,startup_time_s,end_time_s,avg_ms,min_ms,max_ms,ticks,execution_time_ms,effective_UPS,version,platform" > $output
+    echo "save_name,run,startup_time_s,end_time_s,avg_ms,min_ms,max_ms,ticks,execution_time_ms,effective_UPS,version,platform,calibration" > $output
   }
 
   # Mod disabling block
@@ -176,7 +184,7 @@ try {
       $effective_UPS  = [math]::Round((1000 * $ticks / $execution_time_ms), 2)
 
       # Save the results
-      echo "$save_name,$run,$startup_time_s,$end_time_s,$avg_ms,$min_ms,$max_ms,$ticks,$execution_time_ms,$effective_UPS,$version,$platform" >> $output
+      echo "$save_name,$run,$startup_time_s,$end_time_s,$avg_ms,$min_ms,$max_ms,$ticks,$execution_time_ms,$effective_UPS,$version,$platform,$calibration" >> $output
 
       echo "end_time $end_time_s seconds"
 
