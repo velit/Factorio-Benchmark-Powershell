@@ -1,0 +1,6 @@
+# https://github.com/dfinke/ImportExcel
+Import-Excel
+
+# Install it by running this command:
+#
+#     Install-Module ImportExcel -scope CurrentUser 
