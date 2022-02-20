@@ -1,4 +1,4 @@
-# Factorio Benchmark Script v1.1.0
+# Factorio Benchmark Script v1.1.1
 # Depends on Import-Excel https://github.com/dfinke/ImportExcel for -verboseOutput
 param (
 
@@ -62,8 +62,12 @@ param (
     # If given and $output file exists clear it before running
     [switch]$clearOutputFile = $false,
 
-    # If given disables automatic mod disabling feature
+    # If given use user's normal mods.
+    # By default the script creates a separate mod folder for benchmarks
     [switch]$enableMods = $false,
+
+    # Path to benchmark mod folder
+    [string]$benchmarkModFolder = ".\benchmark-mods",
 
     # If given enables verbose mode which logs per-tick benchmarks
     [switch]$verboseResult = $false,
@@ -130,146 +134,114 @@ Write-Output ""
 Write-Host -NoNewline "Executing benchmark after confirmation. Ctrl-c to cancel. "
 pause
 
-try {
+$sanitized_pattern = ""
+if ($usePatternAsOutputPrefix) {
+  # Remove illegal filename characters from pattern for output filename
+  $sanitized_pattern = ($pattern.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') + " "
+}
+[System.IO.FileInfo]$output = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputName + ".csv")
+[System.IO.FileInfo]$outputVerbose = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputNameVerbose + ".xlsx")
 
-  $sanitized_pattern = ""
-  if ($usePatternAsOutputPrefix) {
-    # Remove illegal filename characters from pattern for output filename
-    $sanitized_pattern = ($pattern.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') + " "
+# Delete output file if feature is enabled
+if ($clearOutputFile) {
+  if (Test-Path $output) {
+    rm $output
   }
-  [System.IO.FileInfo]$output = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputName + ".csv")
-  [System.IO.FileInfo]$outputVerbose = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputNameVerbose + ".xlsx")
-
-  # Delete output file if feature is enabled
-  if ($clearOutputFile) {
-    if (Test-Path $output) {
-      rm $output
-    }
-    if (Test-Path $outputVerbose) {
-      rm $outputVerbose
-    }
-  }
-
-  # Check if output file already exists
-  if (-not (Test-Path $output)) {
-    # Create folders for output file
-    [Void](New-Item -Force (Split-Path -Path $output) -ItemType Directory)
-
-    # Create output and print headers
-    Write-Output "Save,Run,Startup time,End time,Avg ms,Min ms,Max ms,Ticks,Execution Time ms,Effective UPS,Version,Platform,Calibration" > $output
-  }
-
-  # Mod disabling block
-  if (-not $enableMods) {
-    $modsPath = Join-Path -Path $configpath -ChildPath "mods"
-    $backupPath = Join-Path -Path $configpath -ChildPath "mods_disabled"
-    if (Test-Path $modsPath) {
-      if (-not (Test-Path $backupPath)) {
-        Write-Output "Disabling mods."
-        Move-Item -Path $modsPath -Destination $backupPath
-      }
-      else {
-        Write-Output "Mods already disabled previously. Doing nothing."
-      }
-    }
-    else {
-      Write-Output "Mod folder not found. Doing nothing."
-    }
-  }
-
-  Write-Output ""
-  # Main benchmark loop
-  for ($i = 0; $i -lt $runs; $i++) {
-    for ($j = 0; $j -lt $saves.length; $j++) {
-      $run = $i + 1
-      $save = $saves[$j].FullName
-      $saveName = $saves[$j].BaseName
-      $runName = $saveName + " Run " + $run
-      $logPath = Join-Path $outputFolder ($runName + ".log")
-
-      Write-Host -NoNewline "Benchmarking $runName`t"
-
-      # Run factorio
-      $argList = "--benchmark `"$save`" --benchmark-ticks $ticks --disable-audio"
-      
-      if ($verboseResult) {
-        $argList += " --benchmark-verbose " + $verboseItems
-      }
-
-      $process = Start-Process -PassThru -FilePath $executable -ArgumentList $argList -RedirectStandardOutput $logPath
-
-      # Set process flags and wait for execution to finish
-      $process.PriorityClass = $cpuPriority
-      if ($cpuAffinity -ne 0) {
-        $process.ProcessorAffinity = $cpuAffinity
-      }
-      $process.WaitForExit()
-
-      # Perform a cleanup pass on the data, since depending on the time to benchmark a number of spaces will be added to
-      # the lines
-      $logData = (Get-Content $logPath) -replace '^\s+', ''
-      $logData | Set-Content $logPath
-
-      # Parse data
-      $avg = (($logData | Select-String "avg:") -split " ")[1]
-      $min = (($logData | Select-String "avg:") -split " ")[4]
-      $max = (($logData | Select-String "avg:") -split " ")[7]
-      $version = (($logData | Select-Object -First 1) -split " ")[4]
-      $executionTime = (($logData | Select-String "Performed") -split " ")[4]
-      $startupTime = (($logData | Select-String "Loading script.dat") -split " ")[0]
-      $endTime = (($logData | Select-Object -Last 1) -split " ")[0]
-      $effectiveUPS  = [math]::Round((1000 * $ticks / $executionTime), 2)
-
-      # Save the results
-      Write-Output "$($executionTime / 1000) seconds"
-      Write-Output "$saveName,$run,$startupTime,$endTime,$avg,$min,$max,$ticks,$executionTime,$effectiveUPS,$version,$platform,$calibration" >> $output
-
-      # If verbose result is enabled produce a separarte excel file with verbose results
-      if (($verboseResult) -and ($excelEnabled)) {
-        $time = Get-Date -Format "HHmm "
-
-        # Select run-specific lines
-        # remove 't' from tick number
-        $verboseData = $logData `
-          | Select-String -Pattern "(^tick,)|(^t\d+)," `
-          | ForEach-Object {$_ -Replace "^t(\d+)", '$1'} `
-          | ConvertFrom-Csv `
-
-        # Change to milliseconds and make ticks 1-based
-        $verboseData | ForEach-Object { 
-          foreach ($property in $_.PSObject.Properties) {
-            if ($property.Name -eq "tick") {
-              [int]$property.Value += 1
-            }
-            else {
-              $property.Value = $property.Value / 1000000
-            }
-          }
-        }
-
-        # Output excel file
-        $verboseData | Export-Excel -AutoSize -WorksheetName ($time + $runName) $outputVerbose
-      }
-
-      if (-not ($keepLogs)) {
-        rm "$logPath"
-      }
-    }
+  if (Test-Path $outputVerbose) {
+    rm $outputVerbose
   }
 }
-# Cleanup
-finally {
-  if (-not $enableMods) {
-    if (Test-Path $backupPath) {
-      if (Test-Path $modsPath) {
-        Write-Output "`nRestoring original mods."
-        mv -Force (Join-Path -Path $backupPath -ChildPath "\*") $modsPath
-        rm $backupPath
+
+# Check if output file already exists
+if (-not (Test-Path $output)) {
+  # Create folders for output file
+  [Void](New-Item -Force (Split-Path -Path $output) -ItemType Directory)
+
+  # Create output and print headers
+  Write-Output "Save,Run,Startup time,End time,Avg ms,Min ms,Max ms,Ticks,Execution Time ms,Effective UPS,Version,Platform,Calibration" > $output
+}
+
+Write-Output ""
+# Main benchmark loop
+for ($i = 0; $i -lt $runs; $i++) {
+  for ($j = 0; $j -lt $saves.length; $j++) {
+    $run = $i + 1
+    $save = $saves[$j].FullName
+    $saveName = $saves[$j].BaseName
+    $runName = $saveName + " Run " + $run
+    $runNameShort = $saveName + " R" + $run
+    $logPath = Join-Path $outputFolder ($runName + ".log")
+
+    Write-Host -NoNewline "Benchmarking $runName`t"
+
+    # Run factorio
+    $argList = "--benchmark `"$save`" --benchmark-ticks $ticks --disable-audio"
+    
+    if ($verboseResult) {
+      $argList += " --benchmark-verbose " + $verboseItems
+    }
+    
+    if (-not $enableMods) {
+      $argList += " --mod-directory `"$benchmarkModFolder`""
+    }
+
+    $process = Start-Process -PassThru -FilePath $executable -ArgumentList $argList -RedirectStandardOutput $logPath
+
+    # Set process flags and wait for execution to finish
+    $process.PriorityClass = $cpuPriority
+    if ($cpuAffinity -ne 0) {
+      $process.ProcessorAffinity = $cpuAffinity
+    }
+    $process.WaitForExit()
+
+    # Perform a cleanup pass on the data, since depending on the time to benchmark a number of spaces will be added to
+    # the lines
+    $logData = (Get-Content $logPath) -replace '^\s+', ''
+    $logData | Set-Content $logPath
+
+    # Parse data
+    $avg = (($logData | Select-String "avg:") -split " ")[1]
+    $min = (($logData | Select-String "avg:") -split " ")[4]
+    $max = (($logData | Select-String "avg:") -split " ")[7]
+    $version = (($logData | Select-Object -First 1) -split " ")[4]
+    $executionTime = (($logData | Select-String "Performed") -split " ")[4]
+    $startupTime = (($logData | Select-String "Loading script.dat") -split " ")[0]
+    $endTime = (($logData | Select-Object -Last 1) -split " ")[0]
+    $effectiveUPS  = [math]::Round((1000 * $ticks / $executionTime), 2)
+
+    # Save the results
+    Write-Output "$($executionTime / 1000) seconds"
+    Write-Output "$saveName,$run,$startupTime,$endTime,$avg,$min,$max,$ticks,$executionTime,$effectiveUPS,$version,$platform,$calibration" >> $output
+
+    # If verbose result is enabled produce a separarte excel file with verbose results
+    if (($verboseResult) -and ($excelEnabled)) {
+      $time = Get-Date -Format "HHmm "
+
+      # Select run-specific lines
+      # remove 't' from tick number
+      $verboseData = $logData `
+        | Select-String -Pattern "(^tick,)|(^t\d+)," `
+        | ForEach-Object {$_ -Replace "^t(\d+)", '$1'} `
+        | ConvertFrom-Csv `
+
+      # Change to milliseconds and make ticks 1-based
+      $verboseData | ForEach-Object { 
+        foreach ($property in $_.PSObject.Properties) {
+          if ($property.Name -eq "tick") {
+            [int]$property.Value += 1
+          }
+          else {
+            $property.Value = $property.Value / 1000000
+          }
+        }
       }
-      else {
-        Write-Output "Mods folder not created. Probably factorio didn't run. Restoring mods."
-        mv $backupPath $modsPath
-      }
+
+      # Output excel file
+      $verboseData | Export-Excel -AutoSize -WorksheetName ($time + $runNameShort) $outputVerbose
+    }
+
+    if (-not ($keepLogs)) {
+      rm "$logPath"
     }
   }
 }
