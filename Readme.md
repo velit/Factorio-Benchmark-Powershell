@@ -7,9 +7,8 @@
     * User mods can be enabled by using -enableMods (Useful for modpack benchmarking)
 * Loading of benchmarked savefiles via -savePath
 * Regex pattern can be used to further limit which saves are benchmarked via -pattern "some pattern"
-* Verbose result mode via -verboseResult allows creation of an excel file where
-  separate run results are saved to their own sheets with tick based update
-  times
+* Verbose result mode via -verboseResult allows creation of an xlsx file where
+  separate run results are saved to their own sheets with tick based update times
 * Cpu Priority selection via -cpuPriority, defaults to "High"
 
 Various other command line options and flags for customizing functionality.
@@ -36,8 +35,14 @@ all the possible flags please run this in powershell:
 
 ## Dependencies
 
-Verbose mode depends on [Import-Excel](https://github.com/dfinke/ImportExcel)
-to create the output excel file with runs in their own sheets.
+Better output files depend on
+[Import-Excel](https://github.com/dfinke/ImportExcel) to create output .xlsx
+files.
+
+Verbose output is possible with per-tick runs all in their own sheets.
+
+Regular output file handles better localization and easier import to
+spreadsheet software (doesn't have to be excel).
 
 Install it by running the following command in powershell:
 
@@ -49,9 +54,6 @@ Script will ask ticks and runs and benchmarks all savefiles found in default sav
 
     .\benchmark.ps1
 
-    cmdlet benchmark.ps1 at command pipeline position 1
-    Supply values for the following parameters:
-    (Type !? for Help.)
     ticks: 6000
     runs: 1
 
@@ -131,6 +133,144 @@ Execute using verbose output. This will output an excel file with per-tick data.
 
 The script doesn't generate graphs but this is an example of what's possible by
 using per-tick data.
+
+## Full Parameter List
+
+### -ticks Int32
+
+Specify the amount of ticks of simulation for each benchmark savefile run
+
+### -runs Int32
+
+Specify the amount of times to repeat each benchmark savefile
+
+### -pattern String
+
+Benchmark filenames can be filtered using this pattern
+Defaults to all savefiles found in ### -savepath
+
+This setting is by default also used as a prefix to the result files
+See -removePatternAsOutputPrefix
+
+### -configpath String
+
+Factorio config path
+Defaults to $env:APPDATA\Factorio\ (Default Factorio config folder)
+
+### -savepath String
+
+Factorio save path
+Savefiles are collected recursively from this path
+Defaults to $env:APPDATA\Factorio\saves (Default Factorio save folder)
+
+### -executable String
+
+Factorio executable path
+Defaults to ${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe (Default Steam installation folder)
+
+### -platform String
+
+Logging string that is used in the regular output file
+Defaults to WindowsSteam
+This is just for convention/convenience and is not used in any logic
+
+### -notes String
+
+Logging string that is used in the regular output file
+Add whatever notes you would like to be included for the given runs
+This is just for convention/convenience and is not used in any logic
+
+### -outputName String
+
+Base output filename (csv/xlsx)
+Default is results
+
+### -outputNameVerbose String
+
+Base verbose output filename (always xlsx)
+Default is verbose
+
+### -outputFolder String
+
+Output results folder
+
+### -forceCSV
+
+Script will default to using xlsx output if Export-Excel dependency is
+installed. You may force the non-verbose output file to always be CSV with
+this if you so wish.
+
+Note: Usage of Excel specifically is not mandatory even with .xlsx files.
+Spreadsheet software just tend to import the data better in more rigid
+file formats than .csv which has issues with localization for example with
+decimal separators.
+
+### -noOutputPrefix
+
+By default the -pattern argument is used as a prefix in output filenames
+Use this flag to disable this behaviour
+
+This is useful if you never want separate results files ever and just want
+to collect all results into one place regardless of your way of selecting
+benchmark files
+
+### -keepLogs
+
+If given preserve the raw logs produced by factorio.exe
+
+### -clearOutputFile
+
+If given and -output file exists clear it before running
+
+### -enableMods
+
+If given use user's normal mods
+By default a separate mod folder is used
+This separate mod folder can be specified with -benchmarkModFolder
+
+### -benchmarkModFolder String
+
+If -enableMods isn't given use this folder as the target for benchmarking mods
+Defaults to ./benchmark-mods/
+Note factorio expects this path in unix format with forward slashes for separators
+
+### -verboseResult
+
+If given enables verbose mode which logs per-tick benchmarks and outputs
+an xlsx file
+
+### -verboseItems String
+
+Specify the list of items included in verbose -verboseResult output. Valid items are:
+
+    tick,timestamp,wholeUpdate,latencyUpdate,gameUpdate,circuitNetworkUpdate,transportLinesUpdate,fluidsUpdate,heatManagerUpdate,entityUpdate,particleUpdate,mapGenerator,mapGeneratorBasicTilesSupportCompute,mapGeneratorBasicTilesSupportApply,mapGeneratorCorrectedTilesPrepare,mapGeneratorCorrectedTilesCompute,mapGeneratorCorrectedTilesApply,mapGeneratorVariations,mapGeneratorEntitiesPrepare,mapGeneratorEntitiesCompute,mapGeneratorEntitiesApply,crcComputation,electricNetworkUpdate,logisticManagerUpdate,constructionManagerUpdate,pathFinder,trains,trainPathFinder,commander,chartRefresh,luaGarbageIncremental,chartUpdate,scriptUpdate,
+
+tick must be one of the selected items, otherwise the script won't work
+
+### -cpuPriority String
+
+Specify which CPU priority to use. Valid values are:
+
+Idle, BelowNormal, Normal, AboveNormal, High, or RealTime
+
+Defaults to High
+
+### -cpuAffinity Int32
+
+Specify CPU affinity. Valid values between 0 - 255
+
+Sum the numbers associated with the cores to specify the cores you want factorio to run in.
+Core 1 = 1
+Core 2 = 2
+Core 3 = 4
+Core 4 = 8
+Core 5 = 16
+Core 6 = 32
+Core 7 = 64
+Core 8 = 128
+Eg. enabling core 1, 3 and 5 is 1 + 4 + 16 = 21
+
+Defaults to 0 which disables affinity specification altogether
 
 ## Contributors
 

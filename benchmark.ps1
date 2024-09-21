@@ -3,7 +3,7 @@
     A Factorio Benchmark Powershell Script
 .DESCRIPTION
     Author: Tapani Kiiskinen
-    Version: v1.1.2
+    Version: v1.2.0
     Depends on Import-Excel https://github.com/dfinke/ImportExcel for -verboseOutput and nicer normal output
 .EXAMPLE
 
@@ -93,10 +93,12 @@ param (
     # ADVANCED SETTINGS #
     #####################
 
-    # Output filename
+    # Base output filename (csv/xlsx)
+    # Default is results
     [string]$outputName = "results",
 
-    # Verbose output filename (always xlsx)
+    # Base verbose output filename (always xlsx)
+    # Default is verbose
     [string]$outputNameVerbose = "verbose",
 
     # Output results folder
@@ -105,6 +107,7 @@ param (
     # Script will default to using xlsx output if Export-Excel dependency is
     # installed. You may force the non-verbose output file to always be CSV with
     # this if you so wish.
+    #
     # Note: Usage of Excel specifically is not mandatory even with .xlsx files.
     # Spreadsheet software just tend to import the data better in more rigid
     # file formats than .csv which has issues with localization for example with
