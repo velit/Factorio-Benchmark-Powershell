@@ -210,8 +210,21 @@ else {
 Write-Output ""
 Write-Output $($saves | select -ExpandProperty BaseName)
 Write-Output ""
-Write-Host -NoNewline "Executing benchmark after confirmation. Ctrl-c to cancel. "
+Write-Host -NoNewLine "Executing benchmark after confirmation. Ctrl-c to cancel. "
 pause
+
+
+[System.IO.FileInfo]$lockPath = Join-Path $configpath -ChildPath (".lock")
+if (Test-Path $lockPath) {
+  Write-Output ""
+  Write-Output "WARNING: Factorio is currently running:"
+  Write-Output "`t$lockPath exists"
+  Write-Output ""
+  Write-Output "Script will crash if Factorio is still running when continuing."
+  Write-Output ""
+  Write-Host -NoNewLine "Ctrl-c to cancel. "
+  pause
+}
 
 $sanitized_pattern = ""
 if (-not ($noOutputPrefix)) {
