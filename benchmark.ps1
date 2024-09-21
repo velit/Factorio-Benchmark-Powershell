@@ -59,7 +59,7 @@ param (
     # Benchmark filenames can be filtered using this pattern
     # Defaults to all savefiles found in -savepath
     #
-    # This setting is by default also used as a prefix to the result file
+    # This setting is by default also used as a prefix to the result files
     # See -removePatternAsOutputPrefix
     [string]$pattern = "",
 
@@ -67,7 +67,8 @@ param (
     # Defaults to $env:APPDATA\Factorio\ (Default Factorio config folder)
     [string]$configpath = "$env:APPDATA\Factorio\",
 
-    # Saves are loaded recursively from here
+    # Factorio save path
+    # Savefiles are collected recursively from this path
     # Defaults to $env:APPDATA\Factorio\saves (Default Factorio save folder)
     [string]$savepath = "$env:APPDATA\Factorio\saves",
 
@@ -76,14 +77,15 @@ param (
     [string]$executable = "${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
     # [string]$executable = "$env:userprofile\Games\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
 
-    # Logging string that is used in the output CSV file
+    # Logging string that is used in the regular output file
     # Defaults to WindowsSteam
     # This is just for convention/convenience and is not used in any logic
     [string]$platform = "WindowsSteam",
 
-    # Logging string that signifies some shared property between all the benchmarked save files
+    # Logging string that is used in the regular output file
+    # Add whatever notes you would like to be included for the given runs
     # This is just for convention/convenience and is not used in any logic
-    [string]$calibration = "",
+    [string]$notes = "",
 
 
 
@@ -93,6 +95,11 @@ param (
 
     # Output csv filename
     [string]$outputName = "results",
+
+    # CSV delimiter
+    # Defaults to a tab-character, but you can change this to a comma or
+    # semi-comma if you wish
+    [string]$csvDelimiter = "`t",
 
     # Output xlsx (Excel) verbose filename
     [string]$outputNameVerbose = "verbose",
@@ -230,7 +237,8 @@ if (-not (Test-Path $output)) {
   [Void](New-Item -Force (Split-Path -Path $output) -ItemType Directory)
 
   # Create output and print headers
-  Write-Output "Save,Run,Startup time,End time,Avg ms,Min ms,Max ms,Ticks,Execution Time ms,Effective UPS,Version,Platform,Calibration" > $output
+  $headers = "Save", "Run", "Startup time", "End time", "Avg ms", "Min ms", "Max ms", "Ticks", "Execution Time ms", "Effective UPS", "Version", "Platform", "Notes"
+  Write-Output ($headers -join "$csvDelimiter") > $output
 }
 
 Write-Output ""
@@ -283,7 +291,8 @@ for ($i = 0; $i -lt $runs; $i++) {
 
     # Save the results
     Write-Output "$($executionTime / 1000) seconds"
-    Write-Output "$saveName,$run,$startupTime,$endTime,$avg,$min,$max,$ticks,$executionTime,$effectiveUPS,$version,$platform,$calibration" >> $output
+    $rowOutput = $saveName, $run, $startupTime, $endTime, $avg, $min, $max, $ticks, $executionTime, $effectiveUPS, $version, $platform, $notes
+    Write-Output ($rowOutput -join "$csvDelimiter") >> $output
 
     # If verbose result is enabled produce a separarte excel file with verbose results
     if (($verboseResult) -and ($excelEnabled)) {
