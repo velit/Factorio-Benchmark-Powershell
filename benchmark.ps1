@@ -4,7 +4,7 @@
 .DESCRIPTION
     Author: Tapani Kiiskinen
     Version: v1.1.2
-    Depends on Import-Excel https://github.com/dfinke/ImportExcel for -verboseOutput
+    Depends on Import-Excel https://github.com/dfinke/ImportExcel for -verboseOutput and nicer normal output
 .EXAMPLE
 
     .\benchmark.ps1
@@ -93,19 +93,23 @@ param (
     # ADVANCED SETTINGS #
     #####################
 
-    # Output csv filename
+    # Output filename
     [string]$outputName = "results",
 
-    # CSV delimiter
-    # Defaults to a tab-character, but you can change this to a comma or
-    # semi-comma if you wish
-    [string]$csvDelimiter = "`t",
-
-    # Output xlsx (Excel) verbose filename
+    # Verbose output filename (always xlsx)
     [string]$outputNameVerbose = "verbose",
 
     # Output results folder
     [string]$outputFolder = ".\Results\",
+
+    # Script will default to using xlsx output if Export-Excel dependency is
+    # installed. You may force the non-verbose output file to always be CSV with
+    # this if you so wish.
+    # Note: Usage of Excel specifically is not mandatory even with .xlsx files.
+    # Spreadsheet software just tend to import the data better in more rigid
+    # file formats than .csv which has issues with localization for example with
+    # decimal separators.
+    [switch]$forceCSV = $false,
 
     # By default the -pattern argument is used as a prefix in output filenames
     # Use this flag to disable this behaviour
@@ -127,12 +131,12 @@ param (
     [switch]$enableMods = $false,
 
     # If -enableMods isn't given use this folder as the target for benchmarking mods
-    # Defaults to .\benchmark-mods
-    # If the folder doesn't actually exist mods won't be used
-    [string]$benchmarkModFolder = ".\benchmark-mods\",
+    # Defaults to ./benchmark-mods/
+    # Note factorio expects this path in unix format with forward slashes for separators
+    [string]$benchmarkModFolder = "./benchmark-mods/",
 
     # If given enables verbose mode which logs per-tick benchmarks and outputs
-    # an excel file
+    # an xlsx file
     [switch]$verboseResult = $false,
 
     # Specify the list of items included in verbose -verboseResult output. Valid items are:
@@ -169,15 +173,15 @@ param (
 
 $ErrorActionPreference = "Stop"
 
-$excelEnabled = $false
+$xlsxEnabled = $false
 if (Get-Command Export-Excel -errorAction SilentlyContinue)
 {
-  $excelEnabled = $true
+  $xlsxEnabled = $true
 }
 elseif ($verboseResult) {
   Write-Host -NoNewLine "UNMET DEPENDENCY.
 
-Export-Excel cmdlet not found for verbose mode.
+Export-Excel cmdlet not found for verbose mode and nicer normal output.
 Script will continue normally but verbose excel file won't be generated.
 Please install the dependency by running this command in powershell:
 
@@ -231,7 +235,12 @@ if (-not ($noOutputPrefix)) {
   # Remove illegal filename characters from pattern for output filename
   $sanitized_pattern = ($pattern.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') + " "
 }
-[System.IO.FileInfo]$output = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputName + ".csv")
+if (($xlsxEnabled) -and -not ($forceCSV)) {
+  [System.IO.FileInfo]$output = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputName + ".xlsx")
+}
+else {
+  [System.IO.FileInfo]$output = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputName + ".csv")
+}
 [System.IO.FileInfo]$outputVerbose = Join-Path $outputFolder -ChildPath ($sanitized_pattern + $outputNameVerbose + ".xlsx")
 
 # Delete output file if feature is enabled
@@ -244,14 +253,19 @@ if ($clearOutputFile) {
   }
 }
 
+$csvDelimiter = ','
+$headers = (("Save", "Run", "Startup time", "End time", "Avg ms", "Min ms", "Max ms", "Ticks", "Execution Time ms", "Effective UPS", "Version", "Platform", "Notes") -join "$csvDelimiter")
 # Check if output file already exists
 if (-not (Test-Path $output)) {
   # Create folders for output file
   [Void](New-Item -Force (Split-Path -Path $output) -ItemType Directory)
 
   # Create output and print headers
-  $headers = "Save", "Run", "Startup time", "End time", "Avg ms", "Min ms", "Max ms", "Ticks", "Execution Time ms", "Effective UPS", "Version", "Platform", "Notes"
-  Write-Output ($headers -join "$csvDelimiter") > $output
+  if (-not ($xlsxEnabled) -or ($forceCSV)) {
+    Write-Output $headers > $output
+  }
+  else {
+  }
 }
 
 Write-Output ""
@@ -304,11 +318,17 @@ for ($i = 0; $i -lt $runs; $i++) {
 
     # Save the results
     Write-Output "$($executionTime / 1000) seconds"
-    $rowOutput = $saveName, $run, $startupTime, $endTime, $avg, $min, $max, $ticks, $executionTime, $effectiveUPS, $version, $platform, $notes
-    Write-Output ($rowOutput -join "$csvDelimiter") >> $output
+    $rowOutput = (($saveName, $run, $startupTime, $endTime, $avg, $min, $max, $ticks, $executionTime, $effectiveUPS, $version, $platform, $notes) -join "$csvDelimiter")
 
-    # If verbose result is enabled produce a separarte excel file with verbose results
-    if (($verboseResult) -and ($excelEnabled)) {
+    if (($xlsxEnabled) -and -not ($forceCSV)) {
+      ($headers, $rowOutput) | ConvertFrom-Csv -Delimiter "$csvDelimiter" | Export-Excel -KillExcel -Append -AutoSize $output 
+    }
+    else {
+      Write-Output $rowOutput >> $output
+    }
+
+    # If verbose result is enabled produce a separarte xlsx file with verbose results
+    if (($verboseResult) -and ($xlsxEnabled)) {
       $time = Get-Date -Format "HHmm "
 
       # Select run-specific lines
@@ -330,8 +350,8 @@ for ($i = 0; $i -lt $runs; $i++) {
         }
       }
 
-      # Output excel file
-      $verboseData | Export-Excel -AutoSize -WorksheetName ($time + $runNameShort) $outputVerbose
+      # Output xlsx file
+      $verboseData | Export-Excel -KillExcel -AutoSize -WorksheetName ($time + $runNameShort) $outputVerbose
     }
 
     if (-not ($keepLogs)) {
