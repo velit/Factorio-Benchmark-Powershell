@@ -1,42 +1,89 @@
-# Factorio Benchmark Script v1.1.1
-# Depends on Import-Excel https://github.com/dfinke/ImportExcel for -verboseOutput
+<#
+.SYNOPSIS
+    A Factorio Benchmark Powershell Script
+.DESCRIPTION
+    Author: Tapani Kiiskinen
+    Version: v1.1.2
+    Depends on Import-Excel https://github.com/dfinke/ImportExcel for -verboseOutput
+.EXAMPLE
+
+    .\benchmark.ps1
+
+    cmdlet benchmark.ps1 at command pipeline position 1
+    Supply values for the following parameters:
+    (Type !? for Help.)
+    ticks: 6000
+    runs: 1
+
+    Following saves found in 'C:\Users\user\AppData\Roaming\Factorio\saves':
+
+    steam_autocloud
+    _autosave1
+    _autosave2
+    Beacon Benchmark
+    Belt Benchmark
+    Inserter Benchmark
+
+    Executing benchmark after confirmation. Ctrl-c to cancel. Press Enter to continue...:
+
+
+.EXAMPLE
+
+    .\benchmark.ps1 6000 10 "Benchmark"
+
+    Following saves found matching pattern 'Beacon Benchmark':
+
+    Beacon Benchmark
+    Belt Benchmark
+    Inserter Benchmark
+
+    Executing benchmark after confirmation. Ctrl-c to cancel. Press Enter to continue...:
+
+.LINK
+    https://github.com/velit/Factorio-Benchmark-Powershell
+#>
 param (
 
     ##################
     # BASIC SETTINGS #
     ##################
 
-    # How many ticks to run the benchmark with
-    # Script will ask this if not given in the command line
-    [Parameter(Mandatory=$true)][int]$ticks,
+    # Specify the amount of ticks of simulation for each benchmark savefile run
+    [Parameter(Mandatory,HelpMessage="Specify the amount of ticks of simulation for each benchmark savefile run")]
+    [int]$ticks,
 
-    # How many repeated runs to run one save with
-    # Script will ask this if not given in the command line
-    [Parameter(Mandatory=$true)][int]$runs,
+    # Specify the amount of times to repeat each benchmark savefile
+    [Parameter(Mandatory,HelpMessage="Specify the amount of times to repeat each benchmark savefile")]
+    [int]$runs,
 
-    # Saves can be filtered using a pattern to match against the filename
-    # Set to "" for no filtering which includes all saves in $savepath
+    # Benchmark filenames can be filtered using this pattern
+    # Defaults to all savefiles found in -savepath
     #
-    # Pattern is also by default used as a prefix to the output CSV file
-    # See $usePatternAsOutputPrefix
+    # This setting is by default also used as a prefix to the result file
+    # See -removePatternAsOutputPrefix
     [string]$pattern = "",
 
     # Factorio config path
+    # Defaults to $env:APPDATA\Factorio\ (Default Factorio config folder)
     [string]$configpath = "$env:APPDATA\Factorio\",
 
     # Saves are loaded recursively from here
+    # Defaults to $env:APPDATA\Factorio\saves (Default Factorio save folder)
     [string]$savepath = "$env:APPDATA\Factorio\saves",
 
     # Factorio executable path
+    # Defaults to ${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe (Default Steam installation folder)
     [string]$executable = "${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
     # [string]$executable = "$env:userprofile\Games\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
 
     # Logging string that is used in the output CSV file
+    # Defaults to WindowsSteam
+    # This is just for convention/convenience and is not used in any logic
     [string]$platform = "WindowsSteam",
 
-    # Logging string that signifies some shared property between all the
-    # benchmarked save files
-    [string]$calibration = "Not given",
+    # Logging string that signifies some shared property between all the benchmarked save files
+    # This is just for convention/convenience and is not used in any logic
+    [string]$calibration = "",
 
 
 
@@ -47,49 +94,68 @@ param (
     # Output csv filename
     [string]$outputName = "results",
 
-    # Output xlsx verbose filename
+    # Output xlsx (Excel) verbose filename
     [string]$outputNameVerbose = "verbose",
 
-    # Which folder to output results into.
+    # Output results folder
     [string]$outputFolder = ".\Results\",
 
-    # If given, will use $pattern as a prefix to the output file
-    [switch]$usePatternAsOutputPrefix = $true,
+    # By default the -pattern argument is used as a prefix in output filenames
+    # Use this flag to disable this behaviour
+    #
+    # This is useful if you never want separate results files ever and just want
+    # to collect all results into one place regardless of your way of selecting
+    # benchmark files
+    [switch]$noOutputPrefix = $false,
 
     # If given preserve the raw logs produced by factorio.exe
     [switch]$keepLogs = $false,
 
-    # If given and $output file exists clear it before running
+    # If given and -output file exists clear it before running
     [switch]$clearOutputFile = $false,
 
-    # If given use user's normal mods.
-    # By default the script creates a separate mod folder for benchmarks
+    # If given use user's normal mods
+    # By default a separate mod folder is used
+    # This separate mod folder can be specified with -benchmarkModFolder
     [switch]$enableMods = $false,
 
-    # Path to benchmark mod folder
-    [string]$benchmarkModFolder = ".\benchmark-mods",
+    # If -enableMods isn't given use this folder as the target for benchmarking mods
+    # Defaults to .\benchmark-mods
+    # If the folder doesn't actually exist mods won't be used
+    [string]$benchmarkModFolder = ".\benchmark-mods\",
 
-    # If given enables verbose mode which logs per-tick benchmarks
+    # If given enables verbose mode which logs per-tick benchmarks and outputs
+    # an excel file
     [switch]$verboseResult = $false,
 
-    # Which items are selected for verbose logging
-    #
-    # Available options are:
+    # Specify the list of items included in verbose -verboseResult output. Valid items are:
     #
     # tick,timestamp,wholeUpdate,latencyUpdate,gameUpdate,circuitNetworkUpdate,transportLinesUpdate,fluidsUpdate,heatManagerUpdate,entityUpdate,particleUpdate,mapGenerator,mapGeneratorBasicTilesSupportCompute,mapGeneratorBasicTilesSupportApply,mapGeneratorCorrectedTilesPrepare,mapGeneratorCorrectedTilesCompute,mapGeneratorCorrectedTilesApply,mapGeneratorVariations,mapGeneratorEntitiesPrepare,mapGeneratorEntitiesCompute,mapGeneratorEntitiesApply,crcComputation,electricNetworkUpdate,logisticManagerUpdate,constructionManagerUpdate,pathFinder,trains,trainPathFinder,commander,chartRefresh,luaGarbageIncremental,chartUpdate,scriptUpdate,
     #
     # tick must be one of the selected items, otherwise the script won't work
     [string]$verboseItems = "tick,wholeUpdate,wholeUpdate,gameUpdate,circuitNetworkUpdate,transportLinesUpdate,fluidsUpdate,entityUpdate,electricNetworkUpdate,logisticManagerUpdate,trains,trainPathFinder",
 
-    # Can customize used CPU priority.
+    # Specify which CPU priority to use. Valid values are:
+    #
+    # Idle, BelowNormal, Normal, AboveNormal, High, or RealTime
+    #
+    # Defaults to High
     [string]$cpuPriority = "High",
 
-    # Can customize CPU affinity.
-    # Sum the numbers associated with the cores to get the cores you want
-    # factorio to run in.
-    # #1 = 1, #2 = 2, #3 = 4, #4 = 8, #5 = 16, #6 = 32, #7 = 64, #8 = 128
+    # Specify CPU affinity. Valid values between 0 - 255
+    #
+    # Sum the numbers associated with the cores to specify the cores you want factorio to run in.
+    # Core 1 = 1
+    # Core 2 = 2
+    # Core 3 = 4
+    # Core 4 = 8
+    # Core 5 = 16
+    # Core 6 = 32
+    # Core 7 = 64
+    # Core 8 = 128
     # Eg. enabling core 1, 3 and 5 is 1 + 4 + 16 = 21
-    # 0 to disable feature
+    #
+    # Defaults to 0 which disables affinity specification altogether
     [int]$cpuAffinity = 0
 )
 #End of user variables
@@ -102,10 +168,16 @@ if (Get-Command Export-Excel -errorAction SilentlyContinue)
   $excelEnabled = $true
 }
 elseif ($verboseResult) {
-  Write-Output "`nUNMET DEPENDENCY. Export-Excel cmdlet not found for verbose mode." `
-    "Please install it by running this command in powershell:" `
-    "`n    Install-Module ImportExcel -scope CurrentUser`n" `
-    "Script will run normally but verbose excel file won't be generated."
+  Write-Host -NoNewLine "UNMET DEPENDENCY.
+
+Export-Excel cmdlet not found for verbose mode.
+Script will continue normally but verbose excel file won't be generated.
+Please install the dependency by running this command in powershell:
+
+    Install-Module ImportExcel -scope CurrentUser
+
+Ctrl-c to cancel. "
+  pause
 }
 
 # Collect the saves to benchmark
@@ -135,7 +207,7 @@ Write-Host -NoNewline "Executing benchmark after confirmation. Ctrl-c to cancel.
 pause
 
 $sanitized_pattern = ""
-if ($usePatternAsOutputPrefix) {
+if (-not ($noOutputPrefix)) {
   # Remove illegal filename characters from pattern for output filename
   $sanitized_pattern = ($pattern.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') + " "
 }
