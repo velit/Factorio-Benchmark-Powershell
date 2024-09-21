@@ -59,8 +59,8 @@ param (
     # Benchmark filenames can be filtered using this pattern
     # Defaults to all savefiles found in -savepath
     #
-    # This setting is by default also used as a prefix to the result files
-    # See -removePatternAsOutputPrefix
+    # This setting can also be used as a prefix to the result files
+    # See -usePatternAsOutputPrefix
     [string]$pattern = "",
 
     # Factorio config path
@@ -95,11 +95,11 @@ param (
 
     # Base output filename (csv/xlsx)
     # Default is results
-    [string]$outputName = "results",
+    [string]$outputName = "Results",
 
     # Base verbose output filename (always xlsx)
     # Default is verbose
-    [string]$outputNameVerbose = "verbose",
+    [string]$outputNameVerbose = "Verbose Results",
 
     # Output results folder
     [string]$outputFolder = ".\Results\",
@@ -114,13 +114,9 @@ param (
     # decimal separators.
     [switch]$forceCSV = $false,
 
-    # By default the -pattern argument is used as a prefix in output filenames
-    # Use this flag to disable this behaviour
-    #
-    # This is useful if you never want separate results files ever and just want
-    # to collect all results into one place regardless of your way of selecting
-    # benchmark files
-    [switch]$noOutputPrefix = $false,
+    # Add -pattern string to output files as prefix.
+    # Useful if you don't want all your results ending up in the same files.
+    [switch]$usePatternAsOutputPrefix = $false,
 
     # If given preserve the raw logs produced by factorio.exe
     [switch]$keepLogs = $false,
@@ -185,7 +181,7 @@ elseif ($verboseResult) {
   Write-Host -NoNewLine "UNMET DEPENDENCY.
 
 Export-Excel cmdlet not found for verbose mode and nicer normal output.
-Script will continue normally but verbose excel file won't be generated.
+Script will continue normally but verbose results file won't be generated.
 Please install the dependency by running this command in powershell:
 
     Install-Module ImportExcel -scope CurrentUser
@@ -234,7 +230,7 @@ if (Test-Path $lockPath) {
 }
 
 $sanitized_pattern = ""
-if (-not ($noOutputPrefix)) {
+if ($usePatternAsOutputPrefix) {
   # Remove illegal filename characters from pattern for output filename
   $sanitized_pattern = ($pattern.Split([IO.Path]::GetInvalidFileNameChars()) -join '_') + " "
 }

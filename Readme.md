@@ -1,8 +1,19 @@
 # A Factorio Benchmark Powershell Script
 
+#### Regular results
+
+![Regular Results Example](results_example.png?raw=true "Regular Results Example")
+
+#### -verboseOutput results
+
+![Verbose Results Example](verbose_example.png?raw=true "Verbose Results Example")
+
+The script doesn't automatically generate graphs but this is an example of
+what's possible with per-tick data generated with -verboseOutput
+
 ## Features:
 
-* Aggregation of benchmark data into an output CSV file
+* Aggregation of benchmark data into output files
 * Disabling of mods for the duration of the benchmark
     * User mods can be enabled by using -enableMods (Useful for modpack benchmarking)
 * Loading of benchmarked savefiles via -savePath
@@ -11,7 +22,7 @@
   separate run results are saved to their own sheets with tick based update times
 * Cpu Priority selection via -cpuPriority, defaults to "High"
 
-Various other command line options and flags for customizing functionality.
+Various other command line options and flags for customizing functionality per invocation.
 Default values can be changed by editing the script, in the params section
 
 ## Installation
@@ -50,7 +61,7 @@ Install it by running the following command in powershell:
 
 ## Examples
 
-Script will ask ticks and runs and benchmarks all savefiles found in default save location:
+#### Script will ask ticks and runs and benchmarks all savefiles found in default save location:
 
     .\benchmark.ps1
 
@@ -70,7 +81,7 @@ Script will ask ticks and runs and benchmarks all savefiles found in default sav
     Executing benchmark after confirmation. Ctrl-c to cancel. Press Enter to continue...:
 
 
-Giving ticks, runs and save pattern as parameters:
+#### Giving ticks, runs and save pattern as parameters:
 
     .\benchmark.ps1 1000 1 "Benchmark"
 
@@ -88,27 +99,29 @@ Giving ticks, runs and save pattern as parameters:
     Inserter Benchmark Run 1                5.5595 seconds
 
 
-Output results can bee seen in Results folder:
-
-    .\Results\flame_sla_10k results.csv:
+Output results can bee seen in `Results\Results.csv`:
 
     Save,Run,Startup time,End time,Avg ms,Min ms,Max ms,Ticks,Execution Time ms,Effective UPS,Version,Platform,Calibration
     flame_sla_10k,1,10.550,14.873,2.892,2.318,25.153,1000,2891.624,345.83,1.1.110,WindowsSteam,
     flame_sla_10k,2,10.483,14.840,2.936,2.358,27.130,1000,2935.500,340.66,1.1.110,WindowsSteam,
 
-Execute using verbose output. This will output an excel file with per-tick data.
+#### Execute using verbose output. This will output an xlsx file with per-tick data.
 
     PS> .\benchmark.ps1 1000 2 "flame_sla_10k" -verboseResult
 
     UNMET DEPENDENCY.
 
     Export-Excel cmdlet not found for verbose mode.
-    Script will continue normally but verbose excel file won't be generated.
+    Script will continue normally but verbose results file won't be generated.
     Please install the dependency by running this command in powershell:
 
         Install-Module ImportExcel -scope CurrentUser
 
-    Ctrl-c to cancel. Press Enter to continue...: <Ctrl-C>
+    Ctrl-c to cancel. Press Enter to continue...:
+
+If the ImportExcel dependency is not installed you will get this message.
+
+Ctrl-c out of it and install the dependency:
 
     PS> Install-Module ImportExcel -scope CurrentUser
 
@@ -117,6 +130,8 @@ Execute using verbose output. This will output an excel file with per-tick data.
     InstallationPolicy value by running the Set-PSRepository cmdlet. Are you sure you want to install the modules from
     'PSGallery'?
     [Y] Yes  [A] Yes to All  [N] No  [L] No to All  [S] Suspend  [?] Help (default is "N"): y
+
+Then you're free to retry the command:
 
     PS> .\benchmark.ps1 1000 2 "flame_sla" -verboseResult
 
@@ -129,10 +144,7 @@ Execute using verbose output. This will output an excel file with per-tick data.
     Benchmarking flame_sla_10k Run 1        2.891624 seconds
     Benchmarking flame_sla_10k Run 2        2.9355 seconds
 
-![Verbose Excel Results Example](excel_example.png?raw=true "Verbose Excel Results Example")
-
-The script doesn't generate graphs but this is an example of what's possible by
-using per-tick data.
+Verbose results can be found in `.\Results\Verbose Results.xlsx`:
 
 ## Full Parameter List
 
@@ -205,14 +217,10 @@ Spreadsheet software just tend to import the data better in more rigid
 file formats than .csv which has issues with localization for example with
 decimal separators.
 
-### -noOutputPrefix
+### -usePatternAsOutputPrefix
 
-By default the -pattern argument is used as a prefix in output filenames
-Use this flag to disable this behaviour
-
-This is useful if you never want separate results files ever and just want
-to collect all results into one place regardless of your way of selecting
-benchmark files
+Add -pattern string to output files as prefix.
+Useful if you don't want all your results ending up in the same files.
 
 ### -keepLogs
 
@@ -260,14 +268,16 @@ Defaults to High
 Specify CPU affinity. Valid values between 0 - 255
 
 Sum the numbers associated with the cores to specify the cores you want factorio to run in.
-Core 1 = 1
-Core 2 = 2
-Core 3 = 4
-Core 4 = 8
-Core 5 = 16
-Core 6 = 32
-Core 7 = 64
-Core 8 = 128
+
+* Core 1 = 1
+* Core 2 = 2
+* Core 3 = 4
+* Core 4 = 8
+* Core 5 = 16
+* Core 6 = 32
+* Core 7 = 64
+* Core 8 = 128
+
 Eg. enabling core 1, 3 and 5 is 1 + 4 + 16 = 21
 
 Defaults to 0 which disables affinity specification altogether
