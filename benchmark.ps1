@@ -63,6 +63,10 @@ param (
     # See -usePatternAsOutputPrefix
     [string]$pattern = "",
 
+    # Factorio executable path
+    # Defaults to ${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe (Default Steam installation folder)
+    [string]$executable = "${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
+
     # Factorio config path
     # Defaults to $env:APPDATA\Factorio\ (Default Factorio config folder)
     [string]$configpath = "$env:APPDATA\Factorio\",
@@ -71,11 +75,6 @@ param (
     # Savefiles are collected recursively from this path
     # Defaults to $env:APPDATA\Factorio\saves (Default Factorio save folder)
     [string]$savepath = "$env:APPDATA\Factorio\saves",
-
-    # Factorio executable path
-    # Defaults to ${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe (Default Steam installation folder)
-    [string]$executable = "${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
-    # [string]$executable = "$env:userprofile\Games\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
 
     # Logging string that is used in the regular output file
     # Defaults to WindowsSteam
@@ -143,7 +142,7 @@ param (
     # tick,timestamp,wholeUpdate,latencyUpdate,gameUpdate,circuitNetworkUpdate,transportLinesUpdate,fluidsUpdate,heatManagerUpdate,entityUpdate,particleUpdate,mapGenerator,mapGeneratorBasicTilesSupportCompute,mapGeneratorBasicTilesSupportApply,mapGeneratorCorrectedTilesPrepare,mapGeneratorCorrectedTilesCompute,mapGeneratorCorrectedTilesApply,mapGeneratorVariations,mapGeneratorEntitiesPrepare,mapGeneratorEntitiesCompute,mapGeneratorEntitiesApply,crcComputation,electricNetworkUpdate,logisticManagerUpdate,constructionManagerUpdate,pathFinder,trains,trainPathFinder,commander,chartRefresh,luaGarbageIncremental,chartUpdate,scriptUpdate,
     #
     # tick must be one of the selected items, otherwise the script won't work
-    [string]$verboseItems = "tick,wholeUpdate,wholeUpdate,gameUpdate,circuitNetworkUpdate,transportLinesUpdate,fluidsUpdate,entityUpdate,electricNetworkUpdate,logisticManagerUpdate,trains,trainPathFinder",
+    [string]$verboseItems = "tick,timestamp,wholeUpdate,latencyUpdate,gameUpdate,planetsUpdate,circuitNetworkUpdate,transportLinesUpdate,fluidsUpdate,heatManagerUpdate,entityUpdate,particleUpdate,mapGenerator,crcComputation,electricNetworkUpdate,logisticManagerUpdate,constructionManagerUpdate,pathFinder,trains,trainPathFinder,commander,chartRefresh,luaGarbageIncremental,chartUpdate,scriptUpdate",
 
     # Specify which CPU priority to use. Valid values are:
     #

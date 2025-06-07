@@ -30,9 +30,23 @@ Default values can be changed by editing the script, in the params section
 Download the ```benchmark.ps1``` file and put it somewhere. Or you can copy
 paste it and just save it in notepad.
 
-Before running please go through at least the Basic Settings section of the
-script and switch the paths that are different for you. The defaults use Steam
-Factorio paths.
+If you are not using the steam version of factorio in its default path open the
+script in notepad and change the following line in the basic settings section
+to point to the factorio executable:
+
+    [string]$executable = "${env:ProgramFiles(x86)}\Steam\steamapps\common\Factorio\bin\x64\factorio.exe",
+
+Don't worry about the ```${env:ProgramFiles(x86)}``` bit that's only there to make it
+work out of the box for most people.
+
+If your factorio executable is in ```C:\Games\Factorio\bin\x64\factorio.exe```
+then change the line to the following:
+
+    [string]$executable = "C:\Games\Factorio\bin\x64\factorio.exe",
+
+The script has many similar options that you can either use command line
+arguments to change or you can change the default values directly in the
+script.
 
 ## Usage:
 
